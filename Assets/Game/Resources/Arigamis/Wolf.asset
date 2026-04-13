@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f52c4c3a8d703ad4c9eeb88d972124ff, type: 3}
+  m_Name: Wolf
+  m_EditorClassIdentifier: Assembly-CSharp::ArigamiBase
+  arigamiName: Wolf
+  beschreibung: Wolf Beschreibung
+  frontSprite: {fileID: -4897768304771191440, guid: 2997b145ae6e7df458865caa7369478b, type: 3}
+  backSprite: {fileID: 1225963635483645531, guid: 90efeb2ccaff86244adfa3642ca877cb, type: 3}
+  battleSpriteScale: 100
+  isFlying: 0
+  typ1: 2
+  typ2: 0
+  maxHp: 50
+  attack: 50
+  defence: 50
+  spAttack: 50
+  spDefence: 50
+  speed: 50
+  lernableMove:
+  - moveBase: {fileID: 11400000, guid: 773993bdf7d75a744a9622fb42cd6a75, type: 2}
+    level: 1
+  - moveBase: {fileID: 11400000, guid: e83b65f503910044298ffd53647a2287, type: 2}
+    level: 4
+  - moveBase: {fileID: 11400000, guid: f6420cffc8d71244ca16a5d360f19bbb, type: 2}
+    level: 7
