@@ -10633,6 +10633,53 @@ MonoBehaviour:
   m_InstancedGameObject: {fileID: 0}
   m_Flags: 3
   m_ColliderType: 1
+--- !u!1 &489116128
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 489116130}
+  - component: {fileID: 489116129}
+  m_Layer: 0
+  m_Name: GameController
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &489116129
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 489116128}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b25b9512289a9ac42b242a41e358c5d4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::GameController
+  playerController: {fileID: 586062282}
+  battleSystem: {fileID: 911037301}
+  worldCamera: {fileID: 519420031}
+--- !u!4 &489116130
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 489116128}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: -26.58099, y: 5.08286, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!213 &516629801
 Sprite:
   m_ObjectHideFlags: 0
@@ -10974,12 +11021,12 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 519420028}
   serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0.5, y: 0.7, z: -10}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: -10}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 0}
+  m_Father: {fileID: 586062284}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!114 &519420033
 MonoBehaviour:
@@ -11097,7 +11144,7 @@ GameObject:
   - component: {fileID: 586062287}
   - component: {fileID: 586062288}
   m_Layer: 3
-  m_Name: PlayerDemo
+  m_Name: Player
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -11186,7 +11233,8 @@ Transform:
   m_LocalPosition: {x: 0.5, y: 0.7, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
-  m_Children: []
+  m_Children:
+  - {fileID: 519420032}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!95 &586062285
@@ -12841,7 +12889,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!4 &911037300
 Transform:
   m_ObjectHideFlags: 0
@@ -13131,7 +13179,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: a68979221a2bb4a4eb4e13bc29628de0, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BattleUnit
-  _base: {fileID: 11400000, guid: e9dbfc4afd6d63e4b82913f131d16e68, type: 2}
+  _base: {fileID: 11400000, guid: 5bc2421aa91b9f14a806f49f810124a8, type: 2}
   level: 10
   isPlayerUnit: 0
   shadow: {fileID: 1328449842}
@@ -14351,10 +14399,10 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 1467951577}
-  - {fileID: 977139134}
   - {fileID: 360827657}
-  - {fileID: 316376783}
   - {fileID: 618592629}
+  - {fileID: 977139134}
+  - {fileID: 316376783}
   - {fileID: 2109612567}
   m_Father: {fileID: 911037300}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
@@ -17165,7 +17213,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::BattleUnit
   _base: {fileID: 11400000, guid: e9dbfc4afd6d63e4b82913f131d16e68, type: 2}
-  level: 7
+  level: 10
   isPlayerUnit: 1
   shadow: {fileID: 1639932358}
 --- !u!114 &1873305069
@@ -17750,7 +17798,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: "Wer das Lie\xDFt ist ein Hund."
+  m_text: 
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 5302535af1044152a457ed104f1f4b91, type: 2}
   m_sharedMaterial: {fileID: 2164040, guid: 5302535af1044152a457ed104f1f4b91, type: 2}
@@ -18166,7 +18214,6 @@ MonoBehaviour:
 SceneRoots:
   m_ObjectHideFlags: 0
   m_Roots:
-  - {fileID: 519420032}
   - {fileID: 619394802}
   - {fileID: 775931004}
   - {fileID: 586062284}
@@ -18175,3 +18222,4 @@ SceneRoots:
   - {fileID: 2094180157}
   - {fileID: 911037300}
   - {fileID: 1089411501}
+  - {fileID: 489116130}

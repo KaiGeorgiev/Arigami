@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
+using System;
 
 public class PlayerController : MonoBehaviour
 {
@@ -7,14 +8,36 @@ public class PlayerController : MonoBehaviour
     private Animator animator;
     private Vector2 input;
 
+    public event Action OnEncountered;
+
     private void Awake()
     {
         mover = GetComponent<CharacterMover>();
         animator = GetComponent<Animator>();
         mover.SnapToGrid();
     }
+    private void OnEnable()
+    {
+        // Sicherstellen, dass mover existiert (falls OnEnable vor Awake kommt)
+        if (mover == null) mover = GetComponent<CharacterMover>();
 
-    private void Update()
+        // Das Event vom Mover abfangen und an den GameController weiterleiten
+        mover.OnEncountered += HandleMoverEncounter;
+    }
+
+    private void OnDisable()
+    {
+        if (mover != null)
+            mover.OnEncountered -= HandleMoverEncounter;
+    }
+
+    private void HandleMoverEncounter()
+    {
+        // Leitet das Event an den GameController weiter
+        OnEncountered?.Invoke();
+    }
+
+    public void HandleUpdate()
     {
         if (mover.IsMoving) return;
 
