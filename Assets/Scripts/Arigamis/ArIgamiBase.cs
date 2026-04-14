@@ -6,18 +6,20 @@ using UnityEngine;
 public class ArigamiBase : ScriptableObject
 {
     [SerializeField] string arigamiName;
-
     [TextArea]
     [SerializeField] string beschreibung;
-
+    
+    [Header("Scaling")]
     [SerializeField] Sprite frontSprite;
     [SerializeField] Sprite backSprite;
     [SerializeField] float battleSpriteScale = 100f;
     [SerializeField] bool isFlying;
-
+    
+    [Header("Characteristics")]
     [SerializeField] ArigamiType typ1;
     [SerializeField] ArigamiType typ2;
 
+    [Header("Stats")]
     //Base Stats
     [SerializeField] int maxHp;
     [SerializeField] int attack;

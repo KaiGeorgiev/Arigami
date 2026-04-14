@@ -2,19 +2,26 @@ using NUnit.Framework;
 using System.Collections.Generic;
 using UnityEngine;
 
+[System.Serializable]
 public class Arigami
 {
+    [SerializeField] ArigamiBase _base;
+    [SerializeField] int level;
 
-    public ArigamiBase Base { get; set; }
-    public int Level { get; set; }
+    public ArigamiBase Base 
+    { 
+        get { return _base; }      
+    }
+    public int Level 
+    { 
+        get { return level; }
+    }
     public int HP {  get; set; }
     public List<Move> Moves { get; set; }
 
 
-    public Arigami(ArigamiBase aBase, int aLevel)
+    public void Init()
     {
-        Base = aBase;
-        Level = aLevel;
         HP = MaxHp;
 
         //Generate Moves
@@ -84,11 +91,17 @@ public class Arigami
             Fainted = false
         };
 
-        float modifiers = Random.Range(0.85f, 1f) * type * critical;
-        float a = (2 * attacker.Level + 10) / 250f;
-        float d = a * move.Base.Power * ((float)attacker.Attack / Defense) + 2;
-        int damage = Mathf.FloorToInt(d * modifiers);
+        int damage = 0;
+        if (move.Base.Category != MoveCategory.Status) {
+            float attackValue = (move.Base.Category == MoveCategory.Physical) ? attacker.Attack : attacker.SpAttack;
+            float defenseValue = (move.Base.Category == MoveCategory.Physical) ? Defense : SpDefence;
 
+
+            float modifiers = Random.Range(0.85f, 1f) * type * critical;
+            float a = (2 * attacker.Level + 10) / 250f;
+            float d = a * move.Base.Power * ((float)attackValue / defenseValue) + 2;
+            damage = Mathf.FloorToInt(d * modifiers);
+        } 
         HP -= damage;
         if (HP <= 0)
         {

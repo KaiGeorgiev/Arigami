@@ -20,8 +20,11 @@ public class GameController : MonoBehaviour
         state = GameState.Battle;
         battleSystem.gameObject.SetActive(true);
         worldCamera.gameObject.SetActive(false);
+        var playerParty = playerController.GetComponent<ArigamiParty>();
+        //Hier muss eventuell eine Perfomance verbesserung stattfinden. EVentuell im entcaunter schon die map Area übergeben.
+        var wildArigami = FindFirstObjectByType<MapArea>().GetComponent<MapArea>().GetRandomWildArigami();
 
-        battleSystem.StartBattle();
+        battleSystem.StartBattle(playerParty, wildArigami);
     }
 
     void EndBattle(bool won)

@@ -4,82 +4,91 @@ using DG.Tweening;
 
 public class BattleUnit : MonoBehaviour
 {
-    [Header("Daten")]
-    [SerializeField] ArigamiBase _base;
-    [SerializeField] int level;
+    [Header("Einstellungen")]
     [SerializeField] bool isPlayerUnit;
 
     [Header("Referenzen")]
     [SerializeField] GameObject shadow;
 
-    // Gecachte Komponenten für bessere Performance
     private RectTransform rectTransform;
     private Image unitImage;
-    Vector3 originalPos;
-    Color originalColor;
-    private CanvasGroup canvasGroup;
-
     private RectTransform shadowRect;
-    Vector3 originalShadowPos;
+    private Image shadowImage;
+
+    private Vector3 basisPos;
+    private Vector3 shadowBasisPos;
+    private Vector3 originalPos;
+    private Vector3 originalShadowPos;
+    private Color originalColor;
 
     public Arigami Arigami { get; set; }
 
     private void Awake()
     {
-        // Komponenten einmalig beim Start suchen
+        InitializeComponents();
+    }
+
+    public void Setup(Arigami arigami)
+    {
+        Arigami = arigami;
+
+        ResetUnitState();
+        ApplyArigamiData();
+        CalculateLayout();
+
+        PlayEnterAnimation();
+    }
+
+    #region Private Kapselung (Setup-Logik)
+
+    private void InitializeComponents()
+    {
         rectTransform = GetComponent<RectTransform>();
         unitImage = GetComponent<Image>();
-        originalPos = unitImage.transform.localPosition;
+        basisPos = rectTransform.localPosition;
         originalColor = unitImage.color;
-
-        // Cache die CanvasGroup beim Start
-        canvasGroup = GetComponent<CanvasGroup>();
-
-        // Falls du vergessen hast, sie im Inspector hinzuzufügen, erstelle sie automatisch:
-        if (canvasGroup == null) canvasGroup = gameObject.AddComponent<CanvasGroup>();
-
 
         if (shadow != null)
         {
             shadowRect = shadow.GetComponent<RectTransform>();
-            originalShadowPos = shadowRect.transform.localPosition;
+            shadowImage = shadow.GetComponent<Image>();
+            shadowBasisPos = shadowRect.localPosition;
+            originalShadowPos = shadowRect.localPosition;
         }
     }
 
-    public void Setup()
+    private void ResetUnitState()
     {
-        Arigami = new Arigami(_base, level);
+        // Tweens stoppen
+        unitImage.DOKill();
+        rectTransform.DOKill();
+        if (shadowImage != null) shadowImage.DOKill();
 
-        // 1. Sprite zuweisen (Nutzt gecachtes unitImage)
+        // Transformationen zurücksetzen
+        rectTransform.localPosition = basisPos;
+        if (shadowRect != null) shadowRect.localPosition = shadowBasisPos;
+
+        // Visuelles Reset
+        gameObject.SetActive(true);
+        unitImage.color = Color.white;
+
+        if (shadowImage != null)
+        {
+            Color sCol = shadowImage.color;
+            sCol.a = 100f / 255f;
+            shadowImage.color = sCol;
+        }
+    }
+
+    private void ApplyArigamiData()
+    {
         unitImage.sprite = isPlayerUnit ? Arigami.Base.BackSprite : Arigami.Base.FrontSprite;
         unitImage.preserveAspect = true;
+    }
 
-        // 1. Die CanvasGroup wieder auf 100% (der Gruppe!) setzen
-        if (canvasGroup == null) canvasGroup = GetComponent<CanvasGroup>();
-        if (canvasGroup != null) canvasGroup.alpha = 1f;
-
-        // 2. Das Hauptbild auf volle Deckkraft (innerhalb der Gruppe)
-        var imgCol = unitImage.color;
-        imgCol.a = 1f;
-        unitImage.color = imgCol;
-
-        // 3. Den Schatten auf seinen spezifischen Alpha-Wert (100/255) setzen
-        if (shadowRect != null)
-        {
-            var sImg = shadowRect.GetComponent<Image>();
-            if (sImg != null)
-            {
-                var sCol = sImg.color;
-                // 100f / 255f entspricht dem Wert 100 im Unity Inspector
-                sCol.a = 100f / 255f;
-                sImg.color = sCol;
-            }
-        }
-
-        // 3. GameObject wieder aktivieren (falls es in der Faint-Animation deaktiviert wurde)
-        gameObject.SetActive(true);
-
-        // 2. Skalierung berechnen
+    private void CalculateLayout()
+    {
+        // 1. Skalierung
         float baseSize = isPlayerUnit ? 335f : 260f;
         float scaleFactor = Arigami.Base.BattleSpriteScale / 100f;
         float finalSize = baseSize * scaleFactor;
@@ -87,98 +96,71 @@ public class BattleUnit : MonoBehaviour
         rectTransform.sizeDelta = new Vector2(finalSize, finalSize);
         rectTransform.localScale = Vector3.one;
 
-        // 3. Pivot-Wechsel ohne Springen (Nutzt gecachtes rectTransform)
-        float targetPivotY = Arigami.Base.IsFlying ? 0.5f : 0f;
-        float pivotDiff = targetPivotY - rectTransform.pivot.y;
-        float yCorrection = pivotDiff * rectTransform.sizeDelta.y;
-
-        rectTransform.pivot = new Vector2(0.5f, targetPivotY);
-        rectTransform.anchoredPosition += new Vector2(0, yCorrection);
-
-        // 4. Extra-Höhe nur für fliegende Gegner
+        // 2. Position (Flieger-Offset)
         if (Arigami.Base.IsFlying && !isPlayerUnit)
         {
-            rectTransform.anchoredPosition += new Vector2(0, 40f);
+            rectTransform.anchoredPosition += new Vector2(0, 70f);
         }
+        originalPos = rectTransform.localPosition;
 
-        // 5. SCHATTEN-LOGIK (Nutzt gecachtes shadowRect)
+        // 3. Schatten-Größe
         if (shadowRect != null)
         {
             float baseShadowWidth = isPlayerUnit ? 335f : 260f;
             float baseShadowHeight = isPlayerUnit ? 110f : 65f;
+            float flyingMultiplier = Arigami.Base.IsFlying ? 0.8f : 1.0f;
 
-            if (Arigami.Base.IsFlying)
-            {
-                // Schatten etwas kleiner bei Fliegern
-                float flyingShadowScale = 0.8f;
-                shadowRect.sizeDelta = new Vector2(baseShadowWidth * scaleFactor * flyingShadowScale,
-                                                   baseShadowHeight * scaleFactor * flyingShadowScale);
-            }
-            else
-            {
-                // Schatten normal proportional
-                shadowRect.sizeDelta = new Vector2(baseShadowWidth * scaleFactor,
-                                                   baseShadowHeight * scaleFactor);
-            }
+            shadowRect.sizeDelta = new Vector2(
+                baseShadowWidth * scaleFactor * flyingMultiplier,
+                baseShadowHeight * scaleFactor * flyingMultiplier
+            );
         }
-        PlayEnterAnimation();
     }
+
+    #endregion
+
+    #region Animationen (Public API)
 
     public void PlayEnterAnimation()
     {
-        if (isPlayerUnit)
-        {
-            unitImage.transform.localPosition = new Vector3(-500, originalPos.y);
-            shadowRect.transform.localPosition = new Vector3(-500, originalShadowPos.y);
-        }
-        else
-        {
-            unitImage.transform.localPosition = new Vector3(350, originalPos.y);
-            shadowRect.transform.localPosition = new Vector3(350, originalShadowPos.y);
-        }
+        float startX = isPlayerUnit ? -500f : 350f;
 
-        unitImage.transform.DOLocalMoveX(originalPos.x, 1f);
-        shadowRect.transform.DOLocalMoveX(originalShadowPos.x, 1f);
+        rectTransform.anchoredPosition = new Vector2(startX, rectTransform.anchoredPosition.y);
+        if (shadowRect != null) shadowRect.anchoredPosition = new Vector2(startX, shadowRect.anchoredPosition.y);
+
+        rectTransform.DOAnchorPosX(originalPos.x, 1f).SetEase(Ease.OutCubic);
+        if (shadowRect != null) shadowRect.DOAnchorPosX(originalShadowPos.x, 1f).SetEase(Ease.OutCubic);
     }
 
     public void PlayAttackAnimation()
     {
-        var sequence = DOTween.Sequence();
-        if (isPlayerUnit)
-        {
-            sequence.Append(unitImage.transform.DOLocalMoveX(originalPos.x + 50f, 0.25f));
-            sequence.Join(shadowRect.transform.DOLocalMoveX(originalPos.x + 50f, 0.25f));
-        }
-        else
-        {
-            sequence.Append(unitImage.transform.DOLocalMoveX(originalPos.x - 50f, 0.25f));
-            sequence.Join(shadowRect.transform.DOLocalMoveX(originalPos.x - 50f, 0.25f));
-        }
-
-        sequence.Append(unitImage.transform.DOLocalMoveX(originalPos.x, 0.25f));
-        sequence.Join(shadowRect.transform.DOLocalMoveX(originalPos.x, 0.25f));
+        float moveDistance = isPlayerUnit ? 50f : -50f;
+        var seq = DOTween.Sequence();
+        seq.Append(rectTransform.DOAnchorPosX(originalPos.x + moveDistance, 0.2f));
+        seq.Append(rectTransform.DOAnchorPosX(originalPos.x, 0.2f));
     }
 
     public void playHitAnimation()
     {
         var sequence = DOTween.Sequence();
         sequence.Append(unitImage.DOColor(Color.gray, 0.1f));
-        sequence.Append(unitImage.DOColor(originalColor, 0.1f));
+        sequence.Append(unitImage.DOColor(Color.white, 0.1f));
     }
 
     public void playFaintAnimation()
     {
+        unitImage.DOKill();
         var sequence = DOTween.Sequence();
 
-        // BEIDE bewegen
-        sequence.Append(unitImage.transform.DOLocalMoveY(originalPos.y - 150f, 0.5f));
-        sequence.Join(shadowRect.transform.DOLocalMoveY(originalPos.y - 150f, 0.5f));
+        sequence.Append(unitImage.DOColor(Color.white, 0.05f));
+        sequence.Join(rectTransform.DOLocalMoveY(originalPos.y - 150f, 0.5f));
+        if (shadowRect != null) sequence.Join(shadowRect.DOLocalMoveY(shadowRect.localPosition.y - 150f, 0.5f));
 
-        // BEIDE ausfaden (Voraussetzung: Beide haben eine Image-Komponente)
         sequence.Join(unitImage.DOFade(0f, 0.4f));
-        sequence.Join(shadowRect.GetComponent<Image>().DOFade(0f, 0.4f));
+        if (shadowImage != null) sequence.Join(shadowImage.DOFade(0f, 0.4f));
 
         sequence.OnComplete(() => gameObject.SetActive(false));
     }
 
+    #endregion
 }

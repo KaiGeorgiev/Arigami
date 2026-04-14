@@ -4,14 +4,19 @@ using UnityEngine;
 public class MoveBase : ScriptableObject
 {
     [SerializeField] string moveName;
-
     [TextArea]
     [SerializeField] string beschreibung;
 
+    [Header("Characteristics")]
     [SerializeField] ArigamiType typ;
+    [SerializeField] MoveCategory category ;
+    
+    [Header("Stats")]
     [SerializeField] int power;
     [SerializeField] int accuracy;
     [SerializeField] int pp;
+
+
 
 
     public string MoveName
@@ -42,5 +47,10 @@ public class MoveBase : ScriptableObject
     public int PP
     {
         get { return pp; }
+    }
+
+    public MoveCategory Category
+    {
+        get { return category; }
     }
 }

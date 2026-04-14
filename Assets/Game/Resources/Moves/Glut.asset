@@ -15,6 +15,7 @@ MonoBehaviour:
   moveName: Glut
   beschreibung: 
   typ: 3
+  category: 1
   power: 40
   accuracy: 100
   pp: 20

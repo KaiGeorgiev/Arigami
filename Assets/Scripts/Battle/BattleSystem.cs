@@ -19,16 +19,21 @@ public class BattleSystem : MonoBehaviour
     int currentAction;
     int currentMove;
 
-    public void StartBattle()
+    ArigamiParty playerParty;
+    Arigami wildArigami;
+
+    public void StartBattle(ArigamiParty playerParty, Arigami wildArigami)
     {
+        this.playerParty = playerParty;
+        this.wildArigami = wildArigami;
         StartCoroutine(SetupBattle());
 
     }
 
     public IEnumerator SetupBattle()
     {
-        playerUnit.Setup();
-        enemyUnit.Setup();
+        playerUnit.Setup(playerParty.GetHealthyArigami());
+        enemyUnit.Setup(wildArigami);
         playerHud.setData(playerUnit.Arigami);
         enemyHud.setData(enemyUnit.Arigami);
 
@@ -95,7 +100,9 @@ public class BattleSystem : MonoBehaviour
     IEnumerator PerformPlayerMove()
     {
         state = BattleState.Busy;
+
         var move = playerUnit.Arigami.Moves[currentMove];
+        move.PP--;
         yield return dialogBox.TypeDialog($"{playerUnit.Arigami.Base.ArigamiName} setzt {move.Base.MoveName} ein!");
 
         playerUnit.PlayAttackAnimation();
@@ -125,6 +132,7 @@ public class BattleSystem : MonoBehaviour
         state = BattleState.EnemyMove;
 
         var move = enemyUnit.Arigami.GetRandomMove();
+        move.PP--;
         yield return dialogBox.TypeDialog($"{enemyUnit.Arigami.Base.ArigamiName} setzt {move.Base.MoveName} ein!");
         enemyUnit.PlayAttackAnimation();
         yield return new WaitForSeconds(1f);
@@ -141,7 +149,24 @@ public class BattleSystem : MonoBehaviour
             playerUnit.playFaintAnimation();
             
             yield return new WaitForSeconds(2f);
-            OnBattleOver(false);
+
+            var nextArigami = playerParty.GetHealthyArigami();
+            if (nextArigami != null)
+            {
+                playerUnit.Setup(nextArigami);
+                playerHud.setData(nextArigami);
+
+                dialogBox.SetMovesNames(nextArigami.Moves);
+
+                yield return dialogBox.TypeDialog($"Los {nextArigami.Base.ArigamiName}!");
+
+                PlayerAction();
+            }
+            else
+            {
+                OnBattleOver(false);
+            }
+
         }
         else
         {
@@ -152,7 +177,6 @@ public class BattleSystem : MonoBehaviour
 
     IEnumerator ShowDamageDetails(DamageDetails damageDetails)
     {
-        Debug.Log("test");
         if (damageDetails.Critical > 1f)
         {
             yield return dialogBox.TypeDialog("Ein Volltreffer!");
