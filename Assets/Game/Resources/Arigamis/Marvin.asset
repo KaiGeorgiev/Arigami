@@ -18,7 +18,7 @@ MonoBehaviour:
   backSprite: {fileID: 2633763533350177016, guid: aca30c48bf9515449b38c6b5e2a83246, type: 3}
   battleSpriteScale: 50
   isFlying: 1
-  typ1: 1
+  typ1: 2
   typ2: 0
   maxHp: 50
   attack: 50
@@ -30,4 +30,6 @@ MonoBehaviour:
   - moveBase: {fileID: 11400000, guid: 773993bdf7d75a744a9622fb42cd6a75, type: 2}
     level: 0
   - moveBase: {fileID: 11400000, guid: e83b65f503910044298ffd53647a2287, type: 2}
+    level: 0
+  - moveBase: {fileID: 11400000, guid: 3bc0fcc8fad6bb84fbb44c45a10117c0, type: 2}
     level: 0

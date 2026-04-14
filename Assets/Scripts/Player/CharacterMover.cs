@@ -1,6 +1,7 @@
 using System.Collections;
 using UnityEngine;
 using UnityEngine.Tilemaps;
+using System;
 
 public class CharacterMover : MonoBehaviour
 {
@@ -12,6 +13,13 @@ public class CharacterMover : MonoBehaviour
     public bool IsMoving { get; private set; }
     public bool isPlayer; // Im Inspektor beim Spieler auf TRUE, bei NPCs auf FALSE setzen
 
+    public event Action OnEncountered;
+    private Animator animator;
+
+    private void Awake()
+    {
+        animator = GetComponentInParent<Animator>();
+    }
     public void SnapToGrid()
     {
         transform.position = new Vector3(
@@ -141,9 +149,11 @@ public class CharacterMover : MonoBehaviour
 
         if (tile is RPGTile rpgTile && rpgTile.canHaveEncounter)
         {
-            if (Random.Range(1,101) <= 10)
+            if (UnityEngine.Random.Range(1,101) <= 10)
             {
-                Debug.Log("Entcounter");
+                animator.SetBool("isMoving", IsMoving);
+                OnEncountered?.Invoke();
+
             }
 
         }

@@ -18,7 +18,7 @@ MonoBehaviour:
   backSprite: {fileID: 1225963635483645531, guid: 90efeb2ccaff86244adfa3642ca877cb, type: 3}
   battleSpriteScale: 100
   isFlying: 0
-  typ1: 2
+  typ1: 3
   typ2: 0
   maxHp: 50
   attack: 50

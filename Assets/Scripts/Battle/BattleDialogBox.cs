@@ -21,21 +21,44 @@ public class BattleDialogBox : MonoBehaviour
     [SerializeField] TextMeshProUGUI ppText;
     [SerializeField] TextMeshProUGUI typeText;
 
+    private Coroutine typingCoroutine;
 
 
-    public void SetDialog(string dialog )
+
+    public void SetDialog(string dialog)
     {
+        // Falls wir sofort Text setzen, stoppen wir die Animation
+        if (typingCoroutine != null) StopCoroutine(typingCoroutine);
         dialogText.text = dialog;
     }
 
     public IEnumerator TypeDialog(string dialog)
     {
+        // 1. Alte Routine stoppen, falls sie noch läuft
+        if (typingCoroutine != null)
+        {
+            StopCoroutine(typingCoroutine);
+        }
+
+        // 2. Neue Routine starten und in der Variable speichern
+        typingCoroutine = StartCoroutine(TypeText(dialog));
+
+        // 3. Warten bis TypeText fertig ist
+        yield return typingCoroutine;
+
+        // 4. Nach dem Schreiben kurz warten (wie in deinem Original)
+        yield return new WaitForSeconds(1f);
+    }
+
+    private IEnumerator TypeText(string dialog)
+    {
         dialogText.text = "";
-        foreach(var letter in dialog.ToCharArray())
+        foreach (var letter in dialog.ToCharArray())
         {
             dialogText.text += letter;
             yield return new WaitForSeconds(1f / lettersPerSecond);
         }
+        typingCoroutine = null;
     }
 
     public void EnableDialogText(bool enabled)

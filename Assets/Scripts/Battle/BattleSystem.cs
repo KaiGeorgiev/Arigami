@@ -1,8 +1,9 @@
-using UnityEngine.InputSystem;
+using System;
 using System.Collections;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
-enum BattleState { Start, PLayerAction, PlayerMove, EnemyMove, Busy}
+enum BattleState { Start, PLayerAction, PlayerMove, EnemyMove, Busy }
 
 public class BattleSystem : MonoBehaviour
 {
@@ -12,11 +13,13 @@ public class BattleSystem : MonoBehaviour
     [SerializeField] BattleHud enemyHud;
     [SerializeField] BattleDialogBox dialogBox;
 
+    public event Action<bool> OnBattleOver;
+
     BattleState state;
     int currentAction;
     int currentMove;
 
-    private void Start()
+    public void StartBattle()
     {
         StartCoroutine(SetupBattle());
 
@@ -32,7 +35,6 @@ public class BattleSystem : MonoBehaviour
         dialogBox.SetMovesNames(playerUnit.Arigami.Moves);
 
         yield return dialogBox.TypeDialog($"Ein wildes {enemyUnit.Arigami.Base.ArigamiName} erscheint.");
-        yield return new WaitForSeconds(1f);
 
         PlayerAction();
     }
@@ -40,7 +42,7 @@ public class BattleSystem : MonoBehaviour
     void PlayerAction()
     {
         state = BattleState.PLayerAction;
-        StartCoroutine( dialogBox.TypeDialog("Wähle eine Aktion"));
+        StartCoroutine(dialogBox.TypeDialog("Wähle eine Aktion"));
         dialogBox.EnablActionSelector(true);
     }
 
@@ -52,7 +54,7 @@ public class BattleSystem : MonoBehaviour
         dialogBox.EnablMoveSelector(true);
     }
 
-    private void Update()
+    public void HandleUpdate()
     {
         switch (state)
         {
@@ -66,7 +68,7 @@ public class BattleSystem : MonoBehaviour
         currentAction = HandleGridSelection(currentAction, 4);
         dialogBox.UpdateActionSelection(currentAction);
 
-        
+
         if (Keyboard.current.spaceKey.wasPressedThisFrame)
         {
             if (currentAction == 0) PlayerMove();
@@ -95,16 +97,25 @@ public class BattleSystem : MonoBehaviour
         state = BattleState.Busy;
         var move = playerUnit.Arigami.Moves[currentMove];
         yield return dialogBox.TypeDialog($"{playerUnit.Arigami.Base.ArigamiName} setzt {move.Base.MoveName} ein!");
-        
+
+        playerUnit.PlayAttackAnimation();
         yield return new WaitForSeconds(1f);
 
-        bool isFainted = enemyUnit.Arigami.TakeDamage(move, playerUnit.Arigami);
-        yield return enemyHud.UpdateHP();
+        enemyUnit.playHitAnimation();
 
-        if (isFainted)
+        var damageDetails = enemyUnit.Arigami.TakeDamage(move, playerUnit.Arigami);
+        yield return enemyHud.UpdateHP();
+        yield return ShowDamageDetails(damageDetails);
+
+        if (damageDetails.Fainted)
         {
             yield return dialogBox.TypeDialog($"{enemyUnit.Arigami.Base.ArigamiName} wurde besiegt!");
-        }else
+            enemyUnit.playFaintAnimation();
+
+            yield return new WaitForSeconds(2f);
+            OnBattleOver(true);
+        }
+        else
         {
             StartCoroutine(EnemyMove());
         }
@@ -115,20 +126,45 @@ public class BattleSystem : MonoBehaviour
 
         var move = enemyUnit.Arigami.GetRandomMove();
         yield return dialogBox.TypeDialog($"{enemyUnit.Arigami.Base.ArigamiName} setzt {move.Base.MoveName} ein!");
-
+        enemyUnit.PlayAttackAnimation();
         yield return new WaitForSeconds(1f);
 
-        bool isFainted = playerUnit.Arigami.TakeDamage(move, enemyUnit.Arigami);
+        playerUnit.playHitAnimation();
+
+        var damageDetails = playerUnit.Arigami.TakeDamage(move, enemyUnit.Arigami);
         yield return playerHud.UpdateHP();
-        if (isFainted)
+        yield return ShowDamageDetails(damageDetails);
+
+        if (damageDetails.Fainted)
         {
             yield return dialogBox.TypeDialog($"{playerUnit.Arigami.Base.ArigamiName} wurde besiegt!");
+            playerUnit.playFaintAnimation();
+            
+            yield return new WaitForSeconds(2f);
+            OnBattleOver(false);
         }
         else
         {
             PlayerAction();
         }
 
+    }
+
+    IEnumerator ShowDamageDetails(DamageDetails damageDetails)
+    {
+        Debug.Log("test");
+        if (damageDetails.Critical > 1f)
+        {
+            yield return dialogBox.TypeDialog("Ein Volltreffer!");
+        }
+        if (damageDetails.TypeEffectiveness > 1)
+        {
+            yield return dialogBox.TypeDialog("Das ist sehr effektiv!");
+        }
+        else if (damageDetails.TypeEffectiveness < 1)
+        {
+            yield return dialogBox.TypeDialog("Das ist nicht effektiv...");
+        }
     }
 
     // Diese Methode gibt den neuen Index zurück
