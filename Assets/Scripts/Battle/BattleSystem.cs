@@ -3,21 +3,21 @@ using System.Collections;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-enum BattleState { Start, PLayerAction, PlayerMove, EnemyMove, Busy }
+enum BattleStates { Start, ActionSelection, MoveSelection, PerformMove, Busy, PartyScreen, BattleOver }
 
 public class BattleSystem : MonoBehaviour
 {
     [SerializeField] BattleUnit playerUnit;
     [SerializeField] BattleUnit enemyUnit;
-    [SerializeField] BattleHud playerHud;
-    [SerializeField] BattleHud enemyHud;
     [SerializeField] BattleDialogBox dialogBox;
+    [SerializeField] PartyScreen partyScreen;
 
     public event Action<bool> OnBattleOver;
 
-    BattleState state;
+    BattleStates state;
     int currentAction;
     int currentMove;
+    int currentMember;
 
     ArigamiParty playerParty;
     Arigami wildArigami;
@@ -34,37 +34,193 @@ public class BattleSystem : MonoBehaviour
     {
         playerUnit.Setup(playerParty.GetHealthyArigami());
         enemyUnit.Setup(wildArigami);
-        playerHud.setData(playerUnit.Arigami);
-        enemyHud.setData(enemyUnit.Arigami);
+
+        partyScreen.Init();
 
         dialogBox.SetMovesNames(playerUnit.Arigami.Moves);
 
         yield return dialogBox.TypeDialog($"Ein wildes {enemyUnit.Arigami.Base.ArigamiName} erscheint.");
 
-        PlayerAction();
+        ChooseFirstTurn();
     }
 
-    void PlayerAction()
+    void ChooseFirstTurn()
     {
-        state = BattleState.PLayerAction;
+        if (playerUnit.Arigami.Speed >= enemyUnit.Arigami.Speed)
+        {
+            ActionSelection();
+        }else
+        {
+            StartCoroutine(EnemyMove());
+        }
+    }
+
+    void BattleOver(bool won)
+    {
+        state = BattleStates.BattleOver;
+        playerParty.Arigamis.ForEach(a => a.OnBattleOver());
+        OnBattleOver(won);
+    }
+
+    void ActionSelection()
+    {
+        state = BattleStates.ActionSelection;
         StartCoroutine(dialogBox.TypeDialog("Wähle eine Aktion"));
         dialogBox.EnablActionSelector(true);
     }
 
-    void PlayerMove()
+    void OpenPartyScreen()
     {
-        state = BattleState.PlayerMove;
+        state = BattleStates.PartyScreen;
+        partyScreen.SetPartyData(playerParty.Arigamis);
+        partyScreen.gameObject.SetActive(true);
+    }
+
+    void MoveSelection()
+    {
+        state = BattleStates.MoveSelection;
         dialogBox.EnablActionSelector(false);
         dialogBox.EnableDialogText(false);
         dialogBox.EnablMoveSelector(true);
+    }
+
+    IEnumerator PlayerMove()
+    {
+        state = BattleStates.PerformMove;
+
+        var move = playerUnit.Arigami.Moves[currentMove];
+        yield return RunMove(playerUnit, enemyUnit, move);
+
+        // Wenn state nicht durch RunMove geändert wurde gehe zum nächten schritt
+        if (state == BattleStates.PerformMove)
+        {
+            StartCoroutine(EnemyMove());
+        }
+
+    }
+
+    IEnumerator EnemyMove()
+    {
+        state = BattleStates.PerformMove;
+
+        var move = enemyUnit.Arigami.GetRandomMove();
+        yield return RunMove(enemyUnit, playerUnit, move);
+
+        // Wenn state nicht durch RunMove geändert wurde gehe zum nächten schritt
+        if (state == BattleStates.PerformMove)
+        {
+            ActionSelection();
+        }
+    }
+
+    IEnumerator RunMove(BattleUnit sourceUnit, BattleUnit targetUnit, Move move) 
+    {
+        move.PP--;
+        yield return dialogBox.TypeDialog($"{sourceUnit.Arigami.Base.ArigamiName} setzt {move.Base.MoveName} ein!");
+
+        sourceUnit.PlayAttackAnimation();
+        yield return new WaitForSeconds(1f);
+
+        targetUnit.playHitAnimation();
+
+        if(move.Base.Category == MoveCategory.Status)
+        {
+            yield return RunMoveEffects(move, sourceUnit.Arigami, targetUnit.Arigami);
+
+        }
+        else
+        {
+            var damageDetails = targetUnit.Arigami.TakeDamage(move, sourceUnit.Arigami);
+            yield return targetUnit.Hud.UpdateHP();
+            yield return ShowDamageDetails(damageDetails);
+        }
+
+        if (targetUnit.Arigami.HP <= 0)
+        {
+            yield return dialogBox.TypeDialog($"{targetUnit.Arigami.Base.ArigamiName} wurde besiegt!");
+            targetUnit.playFaintAnimation();
+            yield return new WaitForSeconds(2f);
+
+            CheckForBattleOver(targetUnit);
+        }
+
+        // Status like brn oder psn hurt arigami ater the tunr
+        sourceUnit.Arigami.OnAfterTurn();
+        yield return ShowStatusChanges(sourceUnit.Arigami);
+        yield return sourceUnit .Hud.UpdateHP();
+        if (sourceUnit.Arigami.HP <= 0)
+        {
+            yield return dialogBox.TypeDialog($"{sourceUnit.Arigami.Base.ArigamiName} wurde besiegt!");
+            sourceUnit.playFaintAnimation();
+            yield return new WaitForSeconds(2f);
+
+            CheckForBattleOver(sourceUnit);
+        }
+    }
+
+    IEnumerator RunMoveEffects(Move move, Arigami source, Arigami target)
+    {
+        var effects = move.Base.Effects;
+
+        //Start Boosting
+        if (effects.Boosts != null)
+        {
+            if (move.Base.Target == MoveTarget.Self)
+            {
+                source.ApplyBoosts(effects.Boosts);
+            }
+            else
+            {
+                target.ApplyBoosts(effects.Boosts);
+            }
+        }
+
+        // Status Conditions
+        if (effects.Status != ConditionID.none)
+        {
+            target.SetStatus(effects.Status);
+        }
+
+        yield return ShowStatusChanges(source);
+        yield return ShowStatusChanges(target);
+    }
+
+    IEnumerator ShowStatusChanges(Arigami arigami)
+    {
+        while (arigami.StatusChanges.Count > 0)
+        {
+            var message = arigami.StatusChanges.Dequeue();
+            yield return dialogBox.TypeDialog(message);
+        }
+    }
+
+    void CheckForBattleOver(BattleUnit faintedUnit)
+    {
+        if (faintedUnit.IsPlayerUnit)
+        {
+            var nextArigami = playerParty.GetHealthyArigami();
+            if (nextArigami != null)
+            {
+                OpenPartyScreen();
+            }
+            else
+            {
+                BattleOver(false);
+            }
+        }
+        else
+        {
+            BattleOver(true);
+        }
     }
 
     public void HandleUpdate()
     {
         switch (state)
         {
-            case BattleState.PLayerAction: HandleActionSelection(); break;
-            case BattleState.PlayerMove: HandleMoveSelection(); break;
+            case BattleStates.ActionSelection: HandleActionSelection(); break;
+            case BattleStates.MoveSelection: HandleMoveSelection(); break;
+            case BattleStates.PartyScreen: HandlePartyScreenSelection(); break;
         }
     }
 
@@ -76,10 +232,24 @@ public class BattleSystem : MonoBehaviour
 
         if (Keyboard.current.spaceKey.wasPressedThisFrame)
         {
-            if (currentAction == 0) PlayerMove();
-            else if (currentAction == 1) { /* Beutel */ }
-            else if (currentAction == 2) { /* Arigami */ }
-            else if (currentAction == 3) { /* Flucht */ }
+            if (currentAction == 0)
+            {
+                /* Kampf */
+                MoveSelection();
+            }
+            else if (currentAction == 1) 
+            { 
+                /* Beutel */ 
+            }
+            else if (currentAction == 2) 
+            {
+                OpenPartyScreen();
+                /* Arigami */ 
+            }
+            else if (currentAction == 3) 
+            { 
+                /* Flucht */ 
+            }
         }
     }
 
@@ -93,85 +263,72 @@ public class BattleSystem : MonoBehaviour
             dialogBox.EnablMoveSelector(false);
             dialogBox.EnableDialogText(true);
 
-            StartCoroutine(PerformPlayerMove());
+            StartCoroutine(PlayerMove());
+        }
+        if (Keyboard.current.backspaceKey.wasPressedThisFrame)
+        {
+            dialogBox.EnablMoveSelector(false);
+            dialogBox.EnableDialogText(true);
+            ActionSelection();
+
         }
     }
 
-    IEnumerator PerformPlayerMove()
+    void HandlePartyScreenSelection()
     {
-        state = BattleState.Busy;
+        currentMember = HandleGridSelection(currentMember, playerParty.Arigamis.Count);
+        partyScreen.UpdateMemberSelection(currentMember);
 
-        var move = playerUnit.Arigami.Moves[currentMove];
-        move.PP--;
-        yield return dialogBox.TypeDialog($"{playerUnit.Arigami.Base.ArigamiName} setzt {move.Base.MoveName} ein!");
-
-        playerUnit.PlayAttackAnimation();
-        yield return new WaitForSeconds(1f);
-
-        enemyUnit.playHitAnimation();
-
-        var damageDetails = enemyUnit.Arigami.TakeDamage(move, playerUnit.Arigami);
-        yield return enemyHud.UpdateHP();
-        yield return ShowDamageDetails(damageDetails);
-
-        if (damageDetails.Fainted)
+        if (Keyboard.current.spaceKey.wasPressedThisFrame)
         {
-            yield return dialogBox.TypeDialog($"{enemyUnit.Arigami.Base.ArigamiName} wurde besiegt!");
-            enemyUnit.playFaintAnimation();
+            var selectedMember = playerParty.Arigamis[currentMember];
+            if (selectedMember.HP <= 0)
+            {
+                partyScreen.SetMessageText("Du kannst kein besigtes Arigami auswählen");
+                return;
+            }
+            if (selectedMember == playerUnit.Arigami)
+            {
+                partyScreen.SetMessageText("Das Ausgewählte Arigami ist bereist im Kampf");
+                return;
+            }
 
-            yield return new WaitForSeconds(2f);
-            OnBattleOver(true);
+            partyScreen.gameObject.SetActive(false);
+            state = BattleStates.Busy;
+            StartCoroutine(SwitchArigami(selectedMember));
         }
-        else
+
+        if (Keyboard.current.backspaceKey.wasPressedThisFrame)
         {
-            StartCoroutine(EnemyMove());
+            partyScreen.gameObject.SetActive(false);
+            ActionSelection();
         }
     }
-    IEnumerator EnemyMove()
+
+    IEnumerator SwitchArigami(Arigami newArigami)
     {
-        state = BattleState.EnemyMove;
-
-        var move = enemyUnit.Arigami.GetRandomMove();
-        move.PP--;
-        yield return dialogBox.TypeDialog($"{enemyUnit.Arigami.Base.ArigamiName} setzt {move.Base.MoveName} ein!");
-        enemyUnit.PlayAttackAnimation();
-        yield return new WaitForSeconds(1f);
-
-        playerUnit.playHitAnimation();
-
-        var damageDetails = playerUnit.Arigami.TakeDamage(move, enemyUnit.Arigami);
-        yield return playerHud.UpdateHP();
-        yield return ShowDamageDetails(damageDetails);
-
-        if (damageDetails.Fainted)
+        bool currentArigamiFainted = true;
+        if(playerUnit.Arigami.HP > 0)
         {
-            yield return dialogBox.TypeDialog($"{playerUnit.Arigami.Base.ArigamiName} wurde besiegt!");
+            currentArigamiFainted = false;
+            yield return dialogBox.TypeDialog($"Komm zurück {playerUnit.Arigami.Base.ArigamiName}");
+            // Hier muss eine ANimation eingebaut werden
             playerUnit.playFaintAnimation();
-            
             yield return new WaitForSeconds(2f);
-
-            var nextArigami = playerParty.GetHealthyArigami();
-            if (nextArigami != null)
-            {
-                playerUnit.Setup(nextArigami);
-                playerHud.setData(nextArigami);
-
-                dialogBox.SetMovesNames(nextArigami.Moves);
-
-                yield return dialogBox.TypeDialog($"Los {nextArigami.Base.ArigamiName}!");
-
-                PlayerAction();
-            }
-            else
-            {
-                OnBattleOver(false);
-            }
-
         }
-        else
+       
+
+        playerUnit.Setup(newArigami);
+
+        dialogBox.SetMovesNames(newArigami.Moves);
+
+        yield return dialogBox.TypeDialog($"Los {newArigami.Base.ArigamiName}!");
+
+        if (currentArigamiFainted)
         {
-            PlayerAction();
+            ChooseFirstTurn();
         }
+        StartCoroutine(EnemyMove()); 
 
     }
 
@@ -196,7 +353,7 @@ public class BattleSystem : MonoBehaviour
     {
         if (Keyboard.current.downArrowKey.wasPressedThisFrame)
         {
-            if (selectedItem <= 1 && selectedItem + 2 < maxItems)
+            if (selectedItem + 2 < maxItems)
                 selectedItem += 2;
         }
         else if (Keyboard.current.upArrowKey.wasPressedThisFrame)
@@ -207,12 +364,12 @@ public class BattleSystem : MonoBehaviour
 
         if (Keyboard.current.rightArrowKey.wasPressedThisFrame)
         {
-            if ((selectedItem == 0 || selectedItem == 2) && selectedItem + 1 < maxItems)
+            if (selectedItem + 1 < maxItems && selectedItem % 2 == 0)
                 selectedItem += 1;
         }
-        else if (Keyboard.current.leftArrowKey.wasPressedThisFrame)
+        else if (Keyboard.current.leftArrowKey.wasPressedThisFrame && selectedItem % 2 != 0)
         {
-            if (selectedItem == 1 || selectedItem == 3)
+            if (selectedItem > 0 )
                 selectedItem -= 1;
         }
 

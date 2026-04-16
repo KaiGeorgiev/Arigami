@@ -6,6 +6,11 @@ using System.Linq;
 public class ArigamiParty : MonoBehaviour
 {
     [SerializeField] List<Arigami> arigamis;
+    
+    public List<Arigami> Arigamis
+    {
+        get { return arigamis; }
+    }
 
     private void Start()
     {

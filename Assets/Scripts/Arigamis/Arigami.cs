@@ -1,4 +1,3 @@
-using NUnit.Framework;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -18,12 +17,25 @@ public class Arigami
     }
     public int HP {  get; set; }
     public List<Move> Moves { get; set; }
+    public Dictionary<Stat, int> Stats { get; private set; }
+    public Dictionary<Stat, int> StatBoosts { get; private set; }
+    public Condition Status { get; private set; }
 
+
+    private readonly Dictionary<Stat, string> _statNamesGerman = new Dictionary<Stat, string>
+    {
+        { Stat.Attack, "Angriff" },
+        { Stat.Defense, "Verteidigung" },
+        { Stat.SpAttack, "Sp.-Angriff" },
+        { Stat.SpDefense, "Sp.-Verteidigung" },
+        { Stat.Speed, "Initiative" }
+    };
+
+    public Queue<string> StatusChanges { get; set; } = new Queue<string>();
+    public bool HpChanged { get; set; }
 
     public void Init()
     {
-        HP = MaxHp;
-
         //Generate Moves
         Moves = new List<Move>();
         foreach (var move in Base.LernableMoves)
@@ -38,35 +50,103 @@ public class Arigami
                 }
             }
         }
+        
+        CalculateStats();
+        HP = MaxHp;
+
+        ResetStatBoost();
+    }
+
+    void ResetStatBoost()
+    {
+        StatBoosts = new Dictionary<Stat, int>()
+        {
+            { Stat.Attack, 0},
+            { Stat.Defense, 0},
+            { Stat.SpAttack, 0},
+            { Stat.SpDefense, 0},
+            { Stat.Speed, 0}
+        };
+    }
+
+    void CalculateStats()
+    {
+        Stats = new Dictionary<Stat, int>();
+        Stats.Add(Stat.Attack, Mathf.FloorToInt((Base.Attack * Level / 100) + 5));
+        Stats.Add(Stat.Defense, Mathf.FloorToInt((Base.Defense * Level / 100) + 5));
+        Stats.Add(Stat.SpAttack, Mathf.FloorToInt((Base.SpAttack * Level / 100) + 5));
+        Stats.Add(Stat.SpDefense, Mathf.FloorToInt((Base.SpDefense * Level / 100) + 5));
+        Stats.Add(Stat.Speed, Mathf.FloorToInt((Base.Speed * Level / 100) + 5));
+
+        MaxHp =  Mathf.FloorToInt((Base.MaxHp * Level / 100) + 10);
+    }
+
+    int GetStat(Stat stat)
+    {
+        int statVal = Stats[stat];
+
+        //Apply stat boost
+        int boost = StatBoosts[stat];
+        var boosValue = new float[] { 1f, 1.5f, 2f, 2.5f, 3f, 3.5f, 4f };
+
+        if (boost >= 0)
+        {
+            statVal = Mathf.FloorToInt( statVal * boosValue[boost]);
+        }else
+        {
+            statVal = Mathf.FloorToInt(statVal / boosValue[-boost]);
+        }
+            return statVal;
+    }
+
+    public void ApplyBoosts(List<StatBoost> statBoosts)
+    {
+        foreach (var statBoost in statBoosts)
+        {
+            var stat = statBoost.stat;
+            var boost = statBoost.boost;
+
+            StatBoosts[stat] = Mathf.Clamp( StatBoosts[stat] + boost, -6 ,6);
+
+            if (boost > 0){
+                StatusChanges.Enqueue($"Der {_statNamesGerman[stat]} von {Base.ArigamiName} ist angestiegen!");
+            }
+            else
+            {
+                StatusChanges.Enqueue($"Der {_statNamesGerman[stat]} von {Base.ArigamiName} ist gesunken!");
+            }
+
+                Debug.Log($"{stat} has been boosted to {StatBoosts[stat]}");
+        }
     }
 
     public int Attack {  
-        get { return Mathf.FloorToInt((Base.Attack * Level / 100) + 5); } 
+        get { return GetStat(Stat.Attack); } 
     }
 
     public int Defense
     {
-        get { return Mathf.FloorToInt((Base.Defense * Level / 100) + 5); }
+        get { return GetStat(Stat.Defense); }
     }
 
     public int SpAttack
     {
-        get { return Mathf.FloorToInt((Base.SpAttack * Level / 100) + 5); }
+        get { return GetStat(Stat.SpAttack); }
     }
 
     public int SpDefence
     {
-        get { return Mathf.FloorToInt((Base.SpDefence * Level / 100) + 5); }
+        get { return GetStat(Stat.SpDefense); }
     }
 
     public int Speed
     {
-        get { return Mathf.FloorToInt((Base.Speed * Level / 100) + 5); }
+        get { return GetStat(Stat.Speed); }
     }
 
     public int MaxHp
     {
-        get { return Mathf.FloorToInt((Base.MaxHp * Level / 100) + 10); }
+        get; private set;
     }
 
     // hier muss im nachgang nochmal genauer geschaut werden KEIN
@@ -101,15 +181,23 @@ public class Arigami
             float a = (2 * attacker.Level + 10) / 250f;
             float d = a * move.Base.Power * ((float)attackValue / defenseValue) + 2;
             damage = Mathf.FloorToInt(d * modifiers);
-        } 
-        HP -= damage;
-        if (HP <= 0)
-        {
-            HP = 0;
-           damageDetails.Fainted = true;
         }
 
+        UpdateHp(damage);
+
         return damageDetails;
+    }
+
+    public void UpdateHp(int damage)
+    {
+        HP = Mathf.Clamp(HP - damage, 0 , MaxHp);
+        HpChanged = true;
+    }
+
+    public void SetStatus(ConditionID conditionID)
+    {
+        Status =  ConditionDB.Conditions[conditionID];
+        StatusChanges.Enqueue($"{Base.ArigamiName} {Status.StartMessage}!");
     }
 
     public Move GetRandomMove()
@@ -118,6 +206,15 @@ public class Arigami
         return Moves[r];
     }
 
+    public void OnAfterTurn()
+    {
+        Status?.OnAfterTurn?.Invoke(this);
+    }
+
+    public void OnBattleOver()
+    {
+        ResetStatBoost();
+    }
 }
 
 public class DamageDetails
@@ -127,4 +224,24 @@ public class DamageDetails
     public float Critical { get; set; }
 
     public float TypeEffectiveness { get; set; }
+}
+
+public enum ArigamiType
+{
+    None,
+    Normal,
+    Wasser,
+    Feuer,
+    Pflanze,
+    Elektro,
+    Eis,
+    Kampf,
+    Gift,
+    Boden,
+    Flug,
+    Psycho,
+    Käfer,
+    Gestein,
+    Geist,
+    Drache
 }

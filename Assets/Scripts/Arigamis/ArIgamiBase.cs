@@ -43,7 +43,7 @@ public class ArigamiBase : ScriptableObject
     public int Attack => attack;
     public int Defense => defence;
     public int SpAttack => spAttack;
-    public int SpDefence => spDefence;
+    public int SpDefense => spDefence;
     public int Speed => speed;
     public List<LernableMove> LernableMoves => lernableMove;
 
@@ -64,4 +64,13 @@ public class LernableMove
     {
         get { return level; }
     }
+}
+
+public enum Stat
+{
+    Attack,
+    Defense, 
+    SpAttack, 
+    SpDefense,
+    Speed
 }

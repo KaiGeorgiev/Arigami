@@ -10,13 +10,13 @@ MonoBehaviour:
   m_Enabled: 1
   m_EditorHideFlags: 0
   m_Script: {fileID: 11500000, guid: f52c4c3a8d703ad4c9eeb88d972124ff, type: 3}
-  m_Name: Marvin
+  m_Name: Marvin 2
   m_EditorClassIdentifier: Assembly-CSharp::ArigamiBase
-  arigamiName: Marvin
+  arigamiName: Marvin 2
   beschreibung: 
-  frontSprite: {fileID: -5319527762437388050, guid: aca30c48bf9515449b38c6b5e2a83246, type: 3}
-  backSprite: {fileID: 2633763533350177016, guid: aca30c48bf9515449b38c6b5e2a83246, type: 3}
-  battleSpriteScale: 50
+  frontSprite: {fileID: -7783752220192248624, guid: a44f5f25d8ab6f148b39e3538666bf46, type: 3}
+  backSprite: {fileID: 1234183244779951692, guid: a44f5f25d8ab6f148b39e3538666bf46, type: 3}
+  battleSpriteScale: 65
   isFlying: 1
   typ1: 2
   typ2: 0

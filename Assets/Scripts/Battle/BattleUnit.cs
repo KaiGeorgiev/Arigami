@@ -6,6 +6,10 @@ public class BattleUnit : MonoBehaviour
 {
     [Header("Einstellungen")]
     [SerializeField] bool isPlayerUnit;
+    [SerializeField] BattleHud hud;
+
+    public bool IsPlayerUnit => isPlayerUnit;
+    public BattleHud Hud => hud;
 
     [Header("Referenzen")]
     [SerializeField] GameObject shadow;
@@ -19,7 +23,7 @@ public class BattleUnit : MonoBehaviour
     private Vector3 shadowBasisPos;
     private Vector3 originalPos;
     private Vector3 originalShadowPos;
-    private Color originalColor;
+
 
     public Arigami Arigami { get; set; }
 
@@ -36,6 +40,8 @@ public class BattleUnit : MonoBehaviour
         ApplyArigamiData();
         CalculateLayout();
 
+        hud.setData(arigami);
+
         PlayEnterAnimation();
     }
 
@@ -46,7 +52,6 @@ public class BattleUnit : MonoBehaviour
         rectTransform = GetComponent<RectTransform>();
         unitImage = GetComponent<Image>();
         basisPos = rectTransform.localPosition;
-        originalColor = unitImage.color;
 
         if (shadow != null)
         {
@@ -89,24 +94,42 @@ public class BattleUnit : MonoBehaviour
     private void CalculateLayout()
     {
         // 1. Skalierung
-        float baseSize = isPlayerUnit ? 335f : 260f;
+        float baseSize = isPlayerUnit ? 355f : 260f;
         float scaleFactor = Arigami.Base.BattleSpriteScale / 100f;
         float finalSize = baseSize * scaleFactor;
 
         rectTransform.sizeDelta = new Vector2(finalSize, finalSize);
         rectTransform.localScale = Vector3.one;
 
-        // 2. Position (Flieger-Offset)
-        if (Arigami.Base.IsFlying && !isPlayerUnit)
+        // 2. Position (Dynamischer Offset für Flieger und Boden-Einheiten)
+        if (!isPlayerUnit)
         {
-            rectTransform.anchoredPosition += new Vector2(0, 70f);
+            float currentScale = Arigami.Base.BattleSpriteScale;
+            float dynamicHeight = 0f;
+
+            if (Arigami.Base.IsFlying)
+            {
+                // Logik für Flieger: 100 -> 15 | 50 -> 70
+                float t = Mathf.InverseLerp(50f, 100f, currentScale);
+                dynamicHeight = Mathf.Lerp(70f, 15f, t);
+            }
+            else
+            {
+                // Logik für Boden-Einheiten: 100 -> 0 | 50 -> 20
+                // (Damit kleinere Sprites nicht im Boden versinken)
+                float t = Mathf.InverseLerp(50f, 100f, currentScale);
+                dynamicHeight = Mathf.Lerp(20f, 0f, t);
+            }
+
+            rectTransform.anchoredPosition += new Vector2(0, dynamicHeight);
         }
+
         originalPos = rectTransform.localPosition;
 
         // 3. Schatten-Größe
         if (shadowRect != null)
         {
-            float baseShadowWidth = isPlayerUnit ? 335f : 260f;
+            float baseShadowWidth = isPlayerUnit ? 355f : 260f;
             float baseShadowHeight = isPlayerUnit ? 110f : 65f;
             float flyingMultiplier = Arigami.Base.IsFlying ? 0.8f : 1.0f;
 
@@ -126,10 +149,13 @@ public class BattleUnit : MonoBehaviour
         float startX = isPlayerUnit ? -500f : 350f;
 
         rectTransform.anchoredPosition = new Vector2(startX, rectTransform.anchoredPosition.y);
-        if (shadowRect != null) shadowRect.anchoredPosition = new Vector2(startX, shadowRect.anchoredPosition.y);
-
         rectTransform.DOAnchorPosX(originalPos.x, 1f).SetEase(Ease.OutCubic);
-        if (shadowRect != null) shadowRect.DOAnchorPosX(originalShadowPos.x, 1f).SetEase(Ease.OutCubic);
+
+        if (shadowRect != null)
+        {
+            shadowRect.anchoredPosition = new Vector2(startX, shadowRect.anchoredPosition.y);
+            shadowRect.DOAnchorPosX(originalShadowPos.x, 1f).SetEase(Ease.OutCubic);
+        }
     }
 
     public void PlayAttackAnimation()
@@ -137,7 +163,18 @@ public class BattleUnit : MonoBehaviour
         float moveDistance = isPlayerUnit ? 50f : -50f;
         var seq = DOTween.Sequence();
         seq.Append(rectTransform.DOAnchorPosX(originalPos.x + moveDistance, 0.2f));
+        
+        if (shadowRect != null)
+        {
+            seq.Join(shadowRect.DOAnchorPosX(originalShadowPos.x + moveDistance, 0.2f));
+        }
+
         seq.Append(rectTransform.DOAnchorPosX(originalPos.x, 0.2f));
+        if (shadowRect != null)
+        {
+            seq.Join(shadowRect.DOAnchorPosX(originalShadowPos.x, 0.2f));
+        }
+
     }
 
     public void playHitAnimation()
@@ -149,15 +186,21 @@ public class BattleUnit : MonoBehaviour
 
     public void playFaintAnimation()
     {
-        unitImage.DOKill();
+        //unitImage.DOKill();
         var sequence = DOTween.Sequence();
 
-        sequence.Append(unitImage.DOColor(Color.white, 0.05f));
+        //sequence.Append(unitImage.DOColor(Color.white, 0.05f));
+        
         sequence.Join(rectTransform.DOLocalMoveY(originalPos.y - 150f, 0.5f));
-        if (shadowRect != null) sequence.Join(shadowRect.DOLocalMoveY(shadowRect.localPosition.y - 150f, 0.5f));
-
         sequence.Join(unitImage.DOFade(0f, 0.4f));
-        if (shadowImage != null) sequence.Join(shadowImage.DOFade(0f, 0.4f));
+
+        if (shadowRect != null)
+        {
+            sequence.Join(shadowRect.DOLocalMoveY(shadowRect.localPosition.y - 150f, 0.5f));
+            sequence.Join(shadowImage.DOFade(0f, 0.4f));
+        }
+
+
 
         sequence.OnComplete(() => gameObject.SetActive(false));
     }

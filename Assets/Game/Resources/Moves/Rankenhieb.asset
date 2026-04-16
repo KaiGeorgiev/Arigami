@@ -15,6 +15,10 @@ MonoBehaviour:
   moveName: Rankenhieb
   beschreibung: 
   typ: 4
+  category: 1
+  effects:
+    boosts: []
+  target: 0
   power: 45
   accuracy: 100
   pp: 20

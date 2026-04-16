@@ -1,14 +1,14 @@
-using System.Collections;
 using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 
-public class BattleHud : MonoBehaviour
+public class PartyMemberUI : MonoBehaviour
 {
 
     [SerializeField] TextMeshProUGUI nameText;
     [SerializeField] TextMeshProUGUI levelText;
     [SerializeField] HPBar hpbar;
+
+    [SerializeField] Color highlightedColor;
 
     Arigami _arigami;
     public void setData(Arigami arigami)
@@ -16,15 +16,17 @@ public class BattleHud : MonoBehaviour
         _arigami = arigami;
         nameText.text = arigami.Base.ArigamiName;
         levelText.text = "lv. " + arigami.Level;
-        hpbar.SetHP((float) arigami.HP / arigami.MaxHp);
+        hpbar.SetHP((float)arigami.HP / arigami.MaxHp);
     }
 
-    public IEnumerator UpdateHP() 
+    public void SetSelected(bool selected)
     {
-        if (_arigami.HpChanged)
+        if (selected)
         {
-            yield return hpbar.SetHPSmooth((float)_arigami.HP / _arigami.MaxHp);
-            _arigami.HpChanged = false;
+            nameText.color = highlightedColor;
+        }else
+        {
+            nameText.color = Color.black;
         }
 
     }
